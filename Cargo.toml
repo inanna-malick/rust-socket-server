@@ -1,0 +1,6 @@
+[package]
+name = "unix_sock"
+version = "0.1.0"
+authors = ["Paul Kinsky <pkinsky@gmail.com>"]
+
+[dependencies]
