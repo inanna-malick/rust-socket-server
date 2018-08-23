@@ -5,25 +5,10 @@ use std::net::Shutdown;
 use std::io::Read;
 use std::io::{Error, ErrorKind};
 use std::str;
-use std::result::Result;
 
-// required to have error side of Result be the same for handle_client
-fn handle_input(bytes: &[u8]) -> Result<&str, Error> {
-    match str::from_utf8(&bytes) {
-        Ok (s) => {
-            Ok(s)
-        }
-        Err (err) => {
-            // TODO: I guess I can just pass error along with type here? cool!
-            // TODO: maybe create some enum of possible domain errors here instead
-            Err(Error::new(ErrorKind::InvalidInput, err))
-        }
-    }
-}
-
-// todo: echo all text instead of insta-shutdown
 fn handle_client(mut socket: UnixStream) {
-    let res = socket.write_all(b"echo server sez: hello world")
+    // note to self: this is ugly af..
+    socket.write_all(b"echo server sez: hello world")
         .and_then( |_| {
             loop {
 
@@ -35,32 +20,31 @@ fn handle_client(mut socket: UnixStream) {
                     .and_then(|n| {
                         println!("read {} bytes", n);
                         // NOTE: can hit failure here if a unicode char boundary is hit at, eg, bytes 64, 65
-                        handle_input(&buffer[0..n])
+                        // HMMM: the https://doc.rust-lang.org/beta/std/str/struct.Utf8Error.html Utf8Error type does provide
+                        // valid_up_to which tells you when it hit an invalid byte, could do something with that (eg store any invalid bytes and retry)
+                        // could just drop the unicode thing entirely and use some kinda parser/combinator'd type to control (todo: figure out thing to control)
+                        // OR: do a (x-byte msg len uint, proto'd msg) stream such that all read ops can just be of known max len
+                        // still have potential problem if read times out/finishes w/o full msg, could need complex logic... ugh
+                        str::from_utf8(&buffer[0..n])
+                          .map_err( |e| Error::new(ErrorKind::InvalidInput, e))
                           .and_then(|s| {
                             println!("got string from stream: {}", s);
                             socket.write(&buffer[0..n])
-                          }).and_then(|n| {
+                          }).map(|n| {
                               println!("wrote {} bytes", n);
-                              Ok(())
                           })
                     });
 
                 if res.is_err() {break res}
             }
-    });
+        }).or_else( |err| {
 
-    match res {
+            println!("reading from stream failed, err: {}", err);
+            // note: weird, I guess this just no-ops instead of failing if stream is already ded?
+            socket.shutdown(Shutdown::Both)
 
-      Ok (_) => {
-          println!("???, this shouldn't terminate without an error");
-      }
-      Err (err) => {
-          println!("reading from stream failed, err: {}", err);
-          // note: weird, I guess this just no-ops instead of failing if stream is already ded?
-          socket.shutdown(Shutdown::Both).expect("shutdown function failed");
-      }
+        });
 
-    }
 }
 
 
