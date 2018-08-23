@@ -43,7 +43,7 @@ fn handle_client(mut socket: UnixStream) {
             // note: weird, I guess this just no-ops instead of failing if stream is already ded?
             socket.shutdown(Shutdown::Both)
 
-        });
+        }).expect("panic! at the disco (couldn't shut down socket for some reason)")
 
 }
 
@@ -60,7 +60,6 @@ fn main() {
       match stream {
           Ok(stream) => {
               /* connection succeeded */
-              //Q: what does || actually do? it looks like lambda syntax for an empty function, maybe that's it
               thread::spawn(|| handle_client(stream));
           }
           Err(err) => {
