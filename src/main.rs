@@ -25,6 +25,12 @@ fn handle_client(mut socket: UnixStream) {
                         // could just drop the unicode thing entirely and use some kinda parser/combinator'd type to control (todo: figure out thing to control)
                         // OR: do a (x-byte msg len uint, proto'd msg) stream such that all read ops can just be of known max len
                         // still have potential problem if read times out/finishes w/o full msg, could need complex logic... ugh
+                        //hmm, looks like nom handles this?
+                        // > nom has been designed for a correct behaviour with partial data: if there is not enough data to decide, nom will tell you it needs more instead of silently returning a wrong result. Whether your data comes entirely or in chunks, the result should be the same.
+                        // nom website has example as hex color parser, could do that and have program control, idk, LED? Color temparature of some widget? w/e, works for me.. interesting project
+                        // AH, IDEA: have format be list of (hex color code, duration) and use to control some sort of color-changing thingy
+                        // or, simplest way of doing it: have it echo back terminal control codes to display requested color or something? idk, plenty of options here that are nontrivial enough to be interesting..
+
                         str::from_utf8(&buffer[0..n])
                           .map_err( |e| Error::new(ErrorKind::InvalidInput, e))
                           .and_then(|s| {
